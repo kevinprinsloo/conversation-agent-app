@@ -30,7 +30,7 @@ interface IAnalytics {
     escalation: string;
     complexityScore: number;
     intentConfidence: number;
-    keyPhrases: IKeyPhrases; // New field
+    keyPhrases: IKeyPhrases;
 }
 
 interface ITranscriptEntry {
@@ -100,26 +100,64 @@ export default function CallAnalytics() {
         ]
     } : null;
 
-    const highlightTranscriptText = (text: string, keyTopics: string[], searchTerm: string) => {
-        const badWords = ["issue", "problem", "error", "fail", "failed"];
-        
+    /**
+     * Highlight transcript text:
+     * - keyTopics in green
+     * - bad words (e.g. "issue", "problem", "error") in red
+     * - search query matches in yellow
+     * - problem phrases (from keyPhrases.problems) in red
+     * - resolution phrases (from keyPhrases.resolutions) in green
+     * - needsReview phrases (from keyPhrases.needsReview) in orange
+     */
+    const highlightTranscriptText = (
+        text: string, 
+        keyTopics: string[], 
+        searchTerm: string,
+        problems: string[],
+        resolutions: string[],
+        needsReview: string[]
+    ) => {
         let highlighted = text;
 
-        // Highlight keyTopics in green
+        // Highlight keyTopics (green)
         keyTopics.forEach((topic) => {
             const regex = new RegExp(`\\b(${topic})\\b`, "gi");
             highlighted = highlighted.replace(regex, '<span class="highlight-good">$1</span>');
         });
 
-        // Highlight bad words in red
+        // Define bad words (if you still want them)
+        const badWords = ["issue", "problem", "error", "fail", "failed"];
         badWords.forEach((bad) => {
             const regex = new RegExp(`\\b(${bad})\\b`, "gi");
             highlighted = highlighted.replace(regex, '<span class="highlight-bad">$1</span>');
         });
 
-        // Highlight search query in yellow
+        // Highlight problem phrases in red (similar to bad words)
+        problems.forEach((phrase) => {
+            // Escape any regex special chars from the phrase:
+            const safePhrase = phrase.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const regex = new RegExp(`\\b(${safePhrase})\\b`, "gi");
+            highlighted = highlighted.replace(regex, '<span class="highlight-bad">$1</span>');
+        });
+
+        // Highlight resolution phrases in green
+        resolutions.forEach((phrase) => {
+            const safePhrase = phrase.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const regex = new RegExp(`\\b(${safePhrase})\\b`, "gi");
+            highlighted = highlighted.replace(regex, '<span class="highlight-good">$1</span>');
+        });
+
+        // Highlight needsReview phrases in orange
+        needsReview.forEach((phrase) => {
+            const safePhrase = phrase.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const regex = new RegExp(`\\b(${safePhrase})\\b`, "gi");
+            highlighted = highlighted.replace(regex, '<span class="highlight-review">$1</span>');
+        });
+
+        // Highlight search query (yellow)
         if (searchTerm.trim() !== "") {
-            const searchRegex = new RegExp(`(${searchTerm})`, "gi");
+            const searchSafe = searchTerm.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const searchRegex = new RegExp(`(${searchSafe})`, "gi");
             highlighted = highlighted.replace(searchRegex, '<span class="highlight-search">$1</span>');
         }
 
@@ -129,7 +167,14 @@ export default function CallAnalytics() {
     const transcriptContent = useMemo(() => {
         if (!analytics) return transcriptEntries;
         return transcriptEntries.map(entry => {
-            const processedText = highlightTranscriptText(entry.text, analytics.keyTopics, searchQuery);
+            const processedText = highlightTranscriptText(
+                entry.text, 
+                analytics.keyTopics, 
+                searchQuery,
+                analytics.keyPhrases.problems,
+                analytics.keyPhrases.resolutions,
+                analytics.keyPhrases.needsReview
+            );
             return { ...entry, highlightedText: processedText };
         });
     }, [transcriptEntries, analytics, searchQuery]);
@@ -169,8 +214,6 @@ export default function CallAnalytics() {
                                     {analytics.keyTopics.map((topic, idx) => <li key={idx}>{topic}</li>)}
                                 </ul>
                             </div>
-
-                            {/* New section for key phrases */}
                             <div className="analytics-card">
                                 <h3>Key Phrases</h3>
                                 <h4>Problems</h4>
@@ -183,7 +226,6 @@ export default function CallAnalytics() {
                                         ))}
                                     </ul>
                                 )}
-
                                 <h4>Resolutions</h4>
                                 {analytics.keyPhrases.resolutions.length === 0 ? (
                                     <p>No resolutions detected.</p>
@@ -194,7 +236,6 @@ export default function CallAnalytics() {
                                         ))}
                                     </ul>
                                 )}
-
                                 <h4>Needs Further Review</h4>
                                 {analytics.keyPhrases.needsReview.length === 0 ? (
                                     <p>No phrases flagged for further review.</p>
@@ -206,7 +247,6 @@ export default function CallAnalytics() {
                                     </ul>
                                 )}
                             </div>
-
                             <div className="analytics-card">
                                 <h3>Call Resolution</h3>
                                 <p>{analytics.callResolution}</p>

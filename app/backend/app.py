@@ -141,7 +141,7 @@ async def analyze_call(request: web.Request):
     Given the conversation between a Customer and an Agent below, 
     analyze the call and produce the structured JSON result by calling the `analyze_call` function.
 
-    In addition to the fields already described, also extract:
+    In addition to the fields already described, also extract the following key phrases from the transcript exactly as they appear:
     - A list of key phrases that highlight problems or issues mentioned by the customer.
     - A list of key phrases that highlight resolutions or solutions provided by the agent.
     - A list of key phrases that might require further human review or investigation.
@@ -160,7 +160,8 @@ async def analyze_call(request: web.Request):
             ],
             functions=functions,
             function_call="auto",
-            temperature=0.3
+            temperature=0.0,
+            max_tokens=2500,
         )
 
         choice = response.choices[0]

@@ -144,3 +144,10 @@
     background-color: #fff3cd; /* light yellow */
     font-weight: bold;
 }
+
+.highlight-review {
+    background-color: orange;
+    font-weight: bold;
+    padding: 0 3px;
+    border-radius: 3px;
+}
