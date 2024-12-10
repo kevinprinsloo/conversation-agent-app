@@ -55,6 +55,16 @@ export default {
                 "7xl": ["4.5rem", { lineHeight: "1.3" }],
                 "4xl": ["2.5rem", { lineHeight: "3.2rem" }],
                 "3xl": ["2rem", { lineHeight: "2.8rem" }]
+            },
+            keyframes: {
+                gradientMove: {
+                    "0%": { "background-position": "0% 50%" },
+                    "50%": { "background-position": "100% 50%" },
+                    "100%": { "background-position": "0% 50%" }
+                }
+            },
+            animation: {
+                gradient: "gradientMove 2s ease infinite"
             }
         }
     },

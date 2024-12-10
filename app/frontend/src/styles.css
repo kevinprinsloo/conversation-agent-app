@@ -1,0 +1,77 @@
+@keyframes rotate-gradient {
+  0% {
+      background-position: 0% 50%;
+  }
+  50% {
+      background-position: 100% 50%;
+  }
+  100% {
+      background-position: 0% 50%;
+  }
+}
+
+.recording-gradient {
+  background: radial-gradient(circle at center, #ff7a59 0%, #f754a9 40%, #b33ff0 80%);
+  background-size: 200% 200%;
+  animation: rotate-gradient 3s linear infinite;
+}
+
+.idle-gradient {
+  background: radial-gradient(circle at center, #e056fd 0%, #5f27cd 50%, #341f97 100%);
+  background-size: 200% 200%;
+  animation: rotate-gradient 3s linear infinite;
+}
+
+/* Animate the border-radius to create a wavy, organic blob-like shape */
+@keyframes wavy-border {
+  0% {
+      border-radius: 50% 50% 50% 50%;
+  }
+  25% {
+      border-radius: 45% 55% 50% 55%;
+  }
+  50% {
+      border-radius: 60% 45% 55% 40%;
+  }
+  75% {
+      border-radius: 55% 50% 40% 60%;
+  }
+  100% {
+      border-radius: 50% 50% 50% 50%;
+  }
+}
+
+.wavy-shape {
+  animation: wavy-border 4s ease-in-out infinite;
+}
+
+@keyframes gradient-x {
+  0% {
+      background-position: 0% 50%;
+  }
+  100% {
+      background-position: 100% 50%;
+  }
+}
+
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 3s linear infinite;
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradientMove 3s ease infinite;
+}

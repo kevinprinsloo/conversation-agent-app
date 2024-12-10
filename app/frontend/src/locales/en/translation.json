@@ -1,13 +1,15 @@
 {
     "app": {
         "title": "Talk to your data",
-        "footer": "Built with Azure AI Search + Azure OpenAI",
+        "footer": "Sky Intelligence - Advance AI Technology built by Sky",
         "stopRecording": "Stop recording",
         "startRecording": "Start recording",
-        "stopConversation": "Stop conversation"
+        "stopConversation": "Stop conversation",
+        "viewCallTranscript": "View call transcript",
+        "UploadSyntheticCall": "Upload Synthetic Call"   
     },
     "status": {
-        "notRecordingMessage": "Ask anything about Contoso employee benefits",
+        "notRecordingMessage": "Ask anything about Sky products and services",
         "conversationInProgress": "Conversation in progress"
     },
     "history": {

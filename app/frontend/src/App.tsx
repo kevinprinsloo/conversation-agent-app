@@ -1,6 +1,11 @@
 import { useState, useRef } from "react";
-import { Mic, MicOff } from "lucide-react";
+import { Mic, MicOff } from "lucide-react"; 
 import { useTranslation } from "react-i18next";
+
+import './styles.css';
+import AnimatedCircle from "./AnimatedCircle";
+import useAudioAmplitude from "./hooks/useAudioAmplitude";
+import useAgentAudioAmplitude from "./hooks/useAgentAudioAmplitude";
 
 import { Button } from "@/components/ui/button";
 import { GroundingFiles } from "@/components/ui/grounding-files";
@@ -38,6 +43,8 @@ function App() {
     const navigate = useNavigate();
     const { t } = useTranslation();
 
+    const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
+
     const addTranscriptEntry = (speaker: "Agent" | "Customer", text: string) => {
         const timestamp = new Date().toLocaleTimeString();
         setTranscriptEntries(prev => [...prev, { speaker, text, timestamp }]);
@@ -51,9 +58,12 @@ function App() {
     };
 
     const onReceivedResponseAudioTranscriptDelta = (message: ResponseAudioTranscriptDelta) => {
-        // Agent partial transcripts accumulate but are not shown until response.done
         if (message.delta && message.delta.trim().length > 0) {
             setAgentTranscriptBuffer(prev => (prev ? prev + " " + message.delta : message.delta));
+        }
+        // If we are receiving agent audio transcript deltas, the agent is "speaking"
+        if (isRecording && message.delta && message.delta.trim().length > 0) {
+            setIsAgentSpeaking(true);
         }
     };
 
@@ -91,24 +101,21 @@ function App() {
         onReceivedResponseAudioTranscriptDelta
     });
 
-    const { reset: resetAudioPlayer, play: playAudio, stop: stopAudioPlayer } = useAudioPlayer();
+    const { reset: resetAudioPlayer, play: playAudio, stop: stopAudioPlayer, getAnalyser } = useAudioPlayer();
     const { start: startAudioRecording, stop: stopAudioRecording } = useAudioRecorder({ onAudioRecorded: addUserAudio });
 
     const onToggleListening = async () => {
         if (!isRecording) {
-            // Start recording session
             startSession();
             await startAudioRecording();
-            resetAudioPlayer();
+            await resetAudioPlayer(); // ensure audio player is initialized before playing
             setIsRecording(true);
         } else {
-            // Stop recording session
             await stopAudioRecording();
             stopAudioPlayer();
             inputAudioBufferClear();
             setIsRecording(false);
-
-            // Once the call ends, immediately start the analytics request
+            setIsAgentSpeaking(false); // stop agent amplitude once call ends
             fetchAnalysis();
         }
     };
@@ -141,6 +148,15 @@ function App() {
         setShowUploadModal(true);
     };
 
+
+    // Get user amplitude (microphone) and agent amplitude (played audio)
+    const userAmplitude = useAudioAmplitude(isRecording);
+    const agentAmplitude = useAgentAudioAmplitude(isAgentSpeaking, getAnalyser);
+
+    // Decide which amplitude to show
+    // For a simple approach, show the louder of the two:
+    const currentAmplitude = Math.max(userAmplitude, agentAmplitude);
+
     const onFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -164,36 +180,56 @@ function App() {
 
 
     return (
-        <div className="flex min-h-screen flex-col bg-gray-100 text-gray-900">
+        <div className="flex min-h-screen flex-col bg-gray-800 text-gray-100 relative">
             <div className="p-4 sm:absolute sm:left-4 sm:top-4">
                 <img src={logo} alt="Azure logo" className="h-16 w-16" />
             </div>
+    
+            {/* Synthetic call upload button positioned in the top-right corner */}
+            <div className="absolute top-4 right-4">
+                <Button onClick={onUploadSyntheticCall} className="mb-8 bg-gradient-to-r from-pink-500 via-purple-600 to-blue-700 hover:bg-pink-600">
+                    {t("app.UploadSyntheticCall")}
+                </Button>
+            </div>
+    
             <main className="flex flex-grow flex-col items-center justify-center">
-                <h1 className="mb-8 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-4xl font-bold text-transparent md:text-7xl">
-                    {t("app.title")}
+                <h1 className="mb-8 bg-gradient-to-r from-orange-400 via-pink-500 to-purple-700 bg-clip-text text-4xl font-bold text-transparent md:text-7xl animate-gradient">
+                    Sky Voice Intelligence
                 </h1>
-                <div className="mb-4 flex flex-col items-center justify-center">
+                <div className="mb-4 flex flex-col items-center justify-center animate-gradient-circle">
+                    {isRecording && (
+                        <div className="mb-8">
+                            <AnimatedCircle amplitude={currentAmplitude} isRecording={isRecording} />
+                        </div>
+                    )}
+
                     <Button
                         onClick={onToggleListening}
-                        className={`h-12 w-60 ${isRecording ? "bg-red-600 hover:bg-red-700" : "bg-purple-500 hover:bg-purple-600"}`}
-                        aria-label={isRecording ? t("app.stopRecording") : t("app.startRecording")}
+                        className={`h-12 w-60 bg-gradient-to-r ${
+                            isRecording
+                                ? "from-red-500 via-pink-600 to-red-700 gradient-x"
+                                : "from-pink-500 via-purple-600 to-blue-700"
+                        } hover:opacity-70`}
+                        aria-label={isRecording ? "Stop Recording" : "Start Recording"}
                     >
                         {isRecording ? (
                             <>
                                 <MicOff className="mr-2 h-4 w-4" />
-                                {t("app.stopConversation")}
+                                Stop Conversation
                             </>
                         ) : (
                             <>
                                 <Mic className="mr-2 h-6 w-6" />
+                                Start Conversation
                             </>
                         )}
                     </Button>
+
                     <StatusMessage isRecording={isRecording} />
                 </div>
-
+    
                 <GroundingFiles files={groundingFiles} onSelected={setSelectedFile} />
-
+    
                 {showTranscriptButton && (
                     <div className="mt-4">
                         <Button onClick={onViewTranscriptClicked} className="bg-blue-600 hover:bg-blue-700">
@@ -201,27 +237,22 @@ function App() {
                         </Button>
                     </div>
                 )}
-
-                {/* Synthetic call upload button */}
-                <div className="mt-4">
-                    <Button onClick={onUploadSyntheticCall} className="bg-blue-500 hover:bg-blue-600">
-                        Upload Synthetic Call
-                    </Button>
-                </div>
             </main>
-
+    
             <footer className="py-4 text-center">
                 <p>{t("app.footer")}</p>
             </footer>
-
+    
             <GroundingFileView groundingFile={selectedFile} onClosed={() => setSelectedFile(null)} />
-
+    
             {/* Modal for file upload */}
             {showUploadModal && (
                 <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
                     <div className="bg-white p-6 rounded shadow-lg">
                         <h2 className="mb-4 text-xl font-bold">Upload JSON Transcript</h2>
-                        <label htmlFor="file-upload" className="sr-only">Upload JSON Transcript</label>
+                        <label htmlFor="file-upload" className="sr-only">
+                            Upload JSON Transcript
+                        </label>
                         <input
                             id="file-upload"
                             type="file"
@@ -231,7 +262,10 @@ function App() {
                             title="Upload JSON Transcript"
                         />
                         <div className="mt-4 flex justify-end">
-                            <Button onClick={() => setShowUploadModal(false)} className="bg-gray-500 hover:bg-gray-600 mr-2">
+                            <Button
+                                onClick={() => setShowUploadModal(false)}
+                                className="bg-gray-500 hover:bg-gray-600 mr-2"
+                            >
                                 Cancel
                             </Button>
                         </div>
@@ -239,7 +273,7 @@ function App() {
                 </div>
             )}
         </div>
-    );
+    );    
 }
 
 export default App;
